@@ -7,6 +7,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import com.rmxdev.weatherapp.domain.model.UserLocation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resumeWithException
 
 class LocationDataSource(context: Context) {
@@ -27,6 +28,16 @@ class LocationDataSource(context: Context) {
             return Result.success(lastLocation)
         }
         return runCatching { requestLocationUpdate() }
+            .fold(
+                onSuccess = { Result.success(it) },
+                onFailure = {
+                    if (it is kotlinx.coroutines.TimeoutCancellationException) {
+                        Result.failure(Exception("No pudimos obtener tu ubicación. Intentá de nuevo"))
+                    } else {
+                        Result.failure(it)
+                    }
+                }
+            )
     }
 
     @SuppressLint("MissingPermission")
@@ -37,7 +48,6 @@ class LocationDataSource(context: Context) {
         return location?.let { UserLocation(it.latitude, it.longitude) }
     }
 
-    // Retorna UserLocation directamente — runCatching lo envuelve en Result
     @SuppressLint("MissingPermission")
     private suspend fun requestLocationUpdate(): UserLocation {
         val provider = when {
@@ -48,37 +58,36 @@ class LocationDataSource(context: Context) {
             )
         }
 
-        return suspendCancellableCoroutine { continuation ->
-            val listener = object : LocationListener {
-                override fun onLocationChanged(location: Location) {
-                    locationManager.removeUpdates(this)
-                    continuation.resume(
-                        UserLocation(
-                            location.latitude,
-                            location.longitude
-                        )
-                    ) { cause, _, _ ->
+        return withTimeout(10_000L) {
+            suspendCancellableCoroutine { continuation ->
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) {
                         locationManager.removeUpdates(this)
+                        continuation.resume(
+                            UserLocation(
+                                location.latitude,
+                                location.longitude
+                            )
+                        ) { cause, _, _ ->
+                            locationManager.removeUpdates(this)
+                        }
+                    }
+
+                    override fun onProviderDisabled(provider: String) {
+                        locationManager.removeUpdates(this)
+                        continuation.resumeWithException(
+                            Exception("GPS desactivado. Activá la ubicación e intentá de nuevo")
+                        )
                     }
                 }
 
-                override fun onProviderDisabled(provider: String) {
-                    locationManager.removeUpdates(this)
-                    continuation.resumeWithException(
-                        Exception("GPS desactivado. Activá la ubicación e intentá de nuevo")
-                    )
+                locationManager.requestLocationUpdates(
+                    provider, 0L, 0f, listener
+                )
+
+                continuation.invokeOnCancellation {
+                    locationManager.removeUpdates(listener)
                 }
-            }
-
-            locationManager.requestLocationUpdates(
-                provider,
-                0L,
-                0f,
-                listener
-            )
-
-            continuation.invokeOnCancellation {
-                locationManager.removeUpdates(listener)
             }
         }
     }

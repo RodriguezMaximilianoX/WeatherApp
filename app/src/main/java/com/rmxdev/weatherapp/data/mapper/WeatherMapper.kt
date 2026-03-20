@@ -9,15 +9,19 @@ import kotlin.math.roundToInt
 
 fun WeatherResponse.toWeatherInfo(): WeatherInfo {
     return WeatherInfo(
-        city = name,
+        city = name.ifEmpty { "Ubicación desconocida" },
         dateTime = dt.toFormattedDate(),
         currentTemp = main.temp.kelvinToCelsius(),
         feelsLike = main.feels_like.kelvinToCelsius(),
         maxTemp = main.temp_max.kelvinToCelsius(),
         minTemp = main.temp_min.kelvinToCelsius(),
         description = weather.firstOrNull()?.description
-            ?.replaceFirstChar { it.uppercase() } ?: "",
-        iconCode = weather.firstOrNull()?.icon ?: "",
+            ?.replaceFirstChar { it.uppercase() }
+            ?.ifEmpty { "Sin descripción disponible" }
+            ?: "Sin descripción disponible",
+        iconCode = weather.firstOrNull()?.icon
+            ?.ifEmpty { "01d" }
+            ?: "01d",
         pressure = main.pressure,
         clouds = clouds.all,
         humidity = main.humidity,
