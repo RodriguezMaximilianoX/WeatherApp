@@ -1,0 +1,28 @@
+package com.rmxdev.weatherapp
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Modifier
+import com.rmxdev.weatherapp.ui.screen.navigation.AppNavigation
+import com.rmxdev.weatherapp.ui.screen.skeleton.SkeletonScreen
+import com.rmxdev.weatherapp.ui.screen.splash.SplashScreen
+import com.rmxdev.weatherapp.ui.theme.WeatherAppTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            WeatherAppTheme {
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    AppNavigation()
+                }
+            }
+        }
+    }
+}
